@@ -16,4 +16,3 @@ services:
 
 volumes:
   redis_data:
-    external: false
