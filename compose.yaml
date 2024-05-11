@@ -1,0 +1,19 @@
+services:
+  goapp:
+    image: go-container:latest
+    ports:
+      - "8080:8080"
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672"
+
+volumes:
+  redis_data:
+    external: false
