@@ -1,8 +1,16 @@
 services:
-  goapp:
-    image: go-container:latest
+  api-consumer:
+    image: go-api-consumer:latest
     ports:
       - "8080:8080"
+
+  ws-receiver:
+    image: go-ws-receiver:latest
+
+  nginx:
+    image: nginx-reverse-proxy:latest
+    ports:
+      - "80:80"
 
   redis:
     image: redis:latest
@@ -10,9 +18,10 @@ services:
       - redis_data:/data
 
   rabbitmq:
-    image: rabbitmq:latest
+    image: rabbitmq:management
     ports:
       - "5672:5672"
+      - "15672:15672"
 
 volumes:
   redis_data:

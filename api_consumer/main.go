@@ -7,8 +7,8 @@ docker compose up
 
 */
 import (
-	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -43,10 +43,38 @@ retry:
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		redisClient.Incr(context.Background(), "count")
-		reqCount, _ := redisClient.Get(context.Background(), "count").Int64()
+		redisClient.Incr(r.Context(), "count")
+		reqCount, _ := redisClient.Get(r.Context(), "count").Int64()
 
 		fmt.Fprintf(w, "Hi you've been here %v times.", reqCount)
+	})
+
+	amqpChan, err := conn.Channel()
+	if err != nil {
+		panic(err)
+	}
+
+	amqpChan.ExchangeDeclare("messages", "fanout", true, true, false, false, nil)
+
+	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		for i := 0; i < 1; i++ {
+			err = amqpChan.Publish("messages", "", false, false, amqp.Publishing{
+				ContentType: "text/plain",
+				Body:        []byte(string(body) + " : " + fmt.Sprint(i)),
+			})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		fmt.Fprint(w, "Message sent!")
 	})
 
 	http.ListenAndServe(":8080", nil)
