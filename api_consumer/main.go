@@ -31,8 +31,6 @@ retry:
 	}
 	defer conn.Close()
 
-	fmt.Println("Hello, World!")
-
 	opts, err := redis.ParseURL("redis://redis:6379")
 	if err != nil {
 		panic(err)
@@ -54,7 +52,10 @@ retry:
 		panic(err)
 	}
 
-	amqpChan.ExchangeDeclare("messages", "fanout", true, true, false, false, nil)
+	err = amqpChan.ExchangeDeclare("messages", "direct", true, true, false, false, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
@@ -64,7 +65,7 @@ retry:
 		}
 
 		for i := 0; i < 1; i++ {
-			err = amqpChan.Publish("messages", "", false, false, amqp.Publishing{
+			err = amqpChan.Publish("messages", "test", false, false, amqp.Publishing{
 				ContentType: "text/plain",
 				Body:        []byte(string(body) + " : " + fmt.Sprint(i)),
 			})
@@ -76,6 +77,8 @@ retry:
 
 		fmt.Fprint(w, "Message sent!")
 	})
+
+	fmt.Println("Listening on :8080")
 
 	http.ListenAndServe(":8080", nil)
 }

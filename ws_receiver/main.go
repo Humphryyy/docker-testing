@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -28,9 +29,14 @@ retry:
 		panic(err)
 	}
 
+	err = amqpChan.ExchangeDeclare("messages", "direct", true, true, false, false, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	var forever chan struct{}
 
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 100; i++ {
 		go CreateSub(amqpChan)
 	}
 
@@ -40,12 +46,17 @@ retry:
 func CreateSub(amqpChan *amqp.Channel) {
 	id := uuid.New().String()
 
-	q, err := amqpChan.QueueDeclare(id, true, false, false, false, nil)
+	fmt.Println("Creating sub: ", id)
+
+	q, err := amqpChan.QueueDeclare(id, true, false, true, false, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	err = amqpChan.QueueBind(id, id, "messages", false, nil)
+	err = amqpChan.QueueBind(q.Name, "test", "messages", false, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	msgs, err := amqpChan.Consume(q.Name, "", true, false, false, false, nil)
 	if err != nil {
@@ -54,7 +65,7 @@ func CreateSub(amqpChan *amqp.Channel) {
 
 	go func() {
 		for d := range msgs {
-			log.Printf("%v | [x] %s", id, d.Body)
+			log.Printf("%v | [x] %s %v", id, d.Body, d.RoutingKey)
 		}
 	}()
 
