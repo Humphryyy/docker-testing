@@ -8,10 +8,23 @@ import (
 )
 
 func IndexRoute(w http.ResponseWriter, r *http.Request) {
-	redisClient := redis.Client()
+	_, err := redis.Incr(r.Context(), "count")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	redisClient.Incr(r.Context(), "count")
-	reqCount, _ := redisClient.Get(r.Context(), "count").Int64()
+	reqCountCmd, err := redis.Get(r.Context(), "count")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	reqCount, err := reqCountCmd.Int64()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	fmt.Fprintf(w, "Hi you've been here %v times.", reqCount)
 }

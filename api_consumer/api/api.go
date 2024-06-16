@@ -11,8 +11,6 @@ import (
 func Run() error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {})
-
 	for _, route := range routes.GetRoutes() {
 		mux.HandleFunc(route.Path, route.Handler)
 	}

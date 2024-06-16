@@ -9,12 +9,18 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type RabbitMQ struct {
+type RabbitMQService interface {
+	ExchangeDeclare(name, kind string) error
+	Publish(exchange, key string, message []byte) error
+	Close()
+}
+
+var rabbitMQ RabbitMQService
+
+type rabbitMQService struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 }
-
-var rabbitMQ *RabbitMQ
 
 func Init() error {
 	retries := 0
@@ -35,10 +41,12 @@ retry:
 		return err
 	}
 
-	rabbitMQ = &RabbitMQ{
+	rq := &rabbitMQService{
 		conn:    conn,
 		channel: channel,
 	}
+
+	rabbitMQ = rq
 
 	err = DeclareExchanges()
 	if err != nil {
@@ -48,18 +56,30 @@ retry:
 	return nil
 }
 
-func (r *RabbitMQ) Close() {
-	r.channel.Close()
-	r.conn.Close()
-}
-
-func (r *RabbitMQ) ExchangeDeclare(name, kind string) error {
+func (r *rabbitMQService) ExchangeDeclare(name, kind string) error {
 	err := r.channel.ExchangeDeclare(name, kind, true, true, false, false, nil)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (r *rabbitMQService) Publish(exchange, key string, message []byte) error {
+	err := r.channel.Publish(exchange, key, false, false, amqp.Publishing{
+		ContentType: "text/plain",
+		Body:        message,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to publish message: %w", err)
+	}
+
+	return nil
+}
+
+func (r *rabbitMQService) Close() {
+	r.channel.Close()
+	r.conn.Close()
 }
 
 func Close() {
@@ -72,13 +92,10 @@ func Close() {
 
 func Publish(exchange, key string, message []byte) error {
 	if rabbitMQ == nil {
-		return nil
+		return fmt.Errorf("rabbitmq not initialized")
 	}
 
-	err := rabbitMQ.channel.Publish(exchange, key, false, false, amqp.Publishing{
-		ContentType: "text/plain",
-		Body:        message,
-	})
+	err := rabbitMQ.Publish(exchange, key, message)
 	if err != nil {
 		return fmt.Errorf("failed to publish message: %w", err)
 	}
@@ -88,7 +105,7 @@ func Publish(exchange, key string, message []byte) error {
 
 func DeclareExchanges() error {
 	if rabbitMQ == nil {
-		return nil
+		return fmt.Errorf("rabbitmq not initialized")
 	}
 
 	exchanges := [][]string{
