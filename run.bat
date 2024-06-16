@@ -4,9 +4,9 @@ docker build . -t go-api-consumer
 
 cd ..
 
-cd ws_receiver
+cd ws_publisher
 
-docker build . -t go-ws-receiver
+docker build . -t go-ws-publisher
 
 cd ..
 

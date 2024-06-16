@@ -1,84 +1,52 @@
 package main
 
-/*
-
-docker build . -t go-container
-docker compose up
-
-*/
 import (
-	"fmt"
-	"io"
-	"net/http"
-	"time"
+	"log"
 
-	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/redis/go-redis/v9"
+	"github.com/Humphryyy/docker-testing/api_consumer/api"
+	"github.com/Humphryyy/docker-testing/api_consumer/global/environment"
+	"github.com/Humphryyy/docker-testing/api_consumer/rabbitmq"
+	"github.com/Humphryyy/docker-testing/api_consumer/redis"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	retries := 0
+	log.Println("Starting API Consumer")
 
-retry:
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
-	if err != nil {
-		if retries < 10 {
-			retries++
-			time.Sleep(5 * time.Second)
-			goto retry
-		}
-		panic(err)
-	}
-	defer conn.Close()
-
-	opts, err := redis.ParseURL("redis://redis:6379")
+	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
 
-	redisClient := redis.NewClient(opts)
-
-	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {})
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		redisClient.Incr(r.Context(), "count")
-		reqCount, _ := redisClient.Get(r.Context(), "count").Int64()
-
-		fmt.Fprintf(w, "Hi you've been here %v times.", reqCount)
-	})
-
-	amqpChan, err := conn.Channel()
+	err = environment.Load()
 	if err != nil {
 		panic(err)
 	}
 
-	err = amqpChan.ExchangeDeclare("messages", "direct", true, true, false, false, nil)
+	log.Println("Environment loaded")
+
+	err = rabbitmq.Init()
 	if err != nil {
 		panic(err)
 	}
 
-	http.HandleFunc("/send", func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+	log.Println("RabbitMQ connected")
 
-		for i := 0; i < 1; i++ {
-			err = amqpChan.Publish("messages", "test", false, false, amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        []byte(string(body) + " : " + fmt.Sprint(i)),
-			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
+	err = redis.Init()
+	if err != nil {
+		panic(err)
+	}
 
-		fmt.Fprint(w, "Message sent!")
-	})
+	log.Println("Redis connected")
 
-	fmt.Println("Listening on :8080")
+	defer exit()
 
-	http.ListenAndServe(":8080", nil)
+	err = api.Run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func exit() {
+	rabbitmq.Close()
 }

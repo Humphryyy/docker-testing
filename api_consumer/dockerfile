@@ -2,8 +2,7 @@ FROM golang:latest
 
 WORKDIR /build
 
-COPY go.mod .
-COPY main.go .
+COPY . .
 
 RUN go get
 

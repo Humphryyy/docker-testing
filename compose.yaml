@@ -4,8 +4,8 @@ services:
     ports:
       - "8080:8080"
 
-  ws-receiver:
-    image: go-ws-receiver:latest
+  ws-publisher:
+    image: go-ws-publisher:latest
 
   nginx:
     image: nginx-reverse-proxy:latest
