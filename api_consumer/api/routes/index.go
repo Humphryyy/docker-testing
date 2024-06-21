@@ -7,6 +7,7 @@ import (
 	"github.com/Humphryyy/docker-testing/api_consumer/redis"
 )
 
+/* Route to index */
 func IndexRoute(w http.ResponseWriter, r *http.Request) {
 	_, err := redis.Incr(r.Context(), "count")
 	if err != nil {

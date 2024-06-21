@@ -7,6 +7,7 @@ type Route struct {
 	Handler func(w http.ResponseWriter, r *http.Request)
 }
 
+/* Gets all routes for API */
 func GetRoutes() []Route {
 	return []Route{
 		{

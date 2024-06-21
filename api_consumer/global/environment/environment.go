@@ -11,6 +11,7 @@ var (
 	ConsumerPort string
 )
 
+/* Loads environments variables into global variables */
 func Load() error {
 	variables := []string{
 		"REDIS_URL",

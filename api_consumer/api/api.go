@@ -8,6 +8,7 @@ import (
 	"github.com/Humphryyy/docker-testing/api_consumer/global/environment"
 )
 
+/* Runs the API */
 func Run() error {
 	mux := http.NewServeMux()
 

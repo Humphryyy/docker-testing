@@ -9,19 +9,23 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+/* A service interface for RabbitMQ */
 type RabbitMQService interface {
 	ExchangeDeclare(name, kind string) error
 	Publish(exchange, key string, message []byte) error
 	Close()
 }
 
+/* RabbitMQ service singleton */
 var rabbitMQ RabbitMQService
 
+/* RabbitMQ service implementation */
 type rabbitMQService struct {
 	conn    *amqp.Connection
 	channel *amqp.Channel
 }
 
+/* Initialize RabbitMQ service */
 func Init() error {
 	retries := 0
 
@@ -56,6 +60,7 @@ retry:
 	return nil
 }
 
+/* Declare a RabbitMQ exchange */
 func (r *rabbitMQService) ExchangeDeclare(name, kind string) error {
 	err := r.channel.ExchangeDeclare(name, kind, true, true, false, false, nil)
 	if err != nil {
@@ -65,6 +70,7 @@ func (r *rabbitMQService) ExchangeDeclare(name, kind string) error {
 	return nil
 }
 
+/* RabbitMQ publish */
 func (r *rabbitMQService) Publish(exchange, key string, message []byte) error {
 	err := r.channel.Publish(exchange, key, false, false, amqp.Publishing{
 		ContentType: "text/plain",
@@ -77,11 +83,13 @@ func (r *rabbitMQService) Publish(exchange, key string, message []byte) error {
 	return nil
 }
 
+/* Close RabbitMQ connection */
 func (r *rabbitMQService) Close() {
 	r.channel.Close()
 	r.conn.Close()
 }
 
+/* Package wrapper for RabbitMQ Close */
 func Close() {
 	if rabbitMQ == nil {
 		return
@@ -90,6 +98,7 @@ func Close() {
 	rabbitMQ.Close()
 }
 
+/* Package wrapper for RabbitMQ Publish */
 func Publish(exchange, key string, message []byte) error {
 	if rabbitMQ == nil {
 		return fmt.Errorf("rabbitmq not initialized")
@@ -103,6 +112,7 @@ func Publish(exchange, key string, message []byte) error {
 	return nil
 }
 
+/* Declare RabbitMQ exchanges */
 func DeclareExchanges() error {
 	if rabbitMQ == nil {
 		return fmt.Errorf("rabbitmq not initialized")
